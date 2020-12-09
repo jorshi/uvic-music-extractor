@@ -1,0 +1,22 @@
+# general things to ignore
+build/
+dist/
+*.egg-info/
+*.egg
+*.py[cod]
+__pycache__/
+*.so
+*~
+data/
+!tests/data
+
+# due to using tox and pytest
+.tox
+.cache
+.coverage
+
+# PyCharm
+.idea/
+
+# Testing audio
+test_audio/
