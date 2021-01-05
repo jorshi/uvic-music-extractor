@@ -8,7 +8,7 @@ import os
 import sys
 import argparse
 
-import uvic_music_extractor.spectral as spectral
+from uvic_music_extractor.extractors import Spectral
 import uvic_music_extractor.utils as utils
 
 def main(arguments):
@@ -23,7 +23,7 @@ def main(arguments):
     parser.add_argument('input', help="Input audio or directory", type=str)
     parser.add_argument('--rate', '-r', help="Sample rate to run audio feature extraction", type=int, default=44100)
     parser.add_argument('--normalize', '-n', help="Normalize audio to a specified loudness in LUFS,"
-                                                  "defaults to -24. Pass in None to disable",
+                                                  "defaults to -24. Pass in no to disable",
                         default=float(-24.0))
     args = parser.parse_args(arguments)
 
@@ -31,13 +31,26 @@ def main(arguments):
     audio_files = utils.get_audio_files(args.input)
     print("Running feature extraction on {} files at a sampling rate of {}Hz".format(len(audio_files), args.rate))
 
+    # Setup Extractors
+    spectral = Spectral(args.rate)
+
     # Loop through all the audio files
     for path in audio_files:
         samples = utils.load_audio(path, args.rate, mono=False)
 
-        if args.normalize != 'None':
+        # Normalize loudness if required
+        if not (type(args.normalize) == str and args.normalize.lower() == 'no'):
             lufs = float(args.normalize)
             samples = utils.normalize_loudness(samples, args.rate, lufs)
+
+        # Mix to mono and run extraction
+        mono_samples = utils.mix_to_mono(samples)
+        spectral_results = spectral(mono_samples)
+        print(spectral_results)
+
+        print(spectral.get_headers())
+
+
 
     #spectral_results = spectral.runExtraction(args.input)
     #print(spectral_results)
