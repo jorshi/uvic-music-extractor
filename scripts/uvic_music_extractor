@@ -7,6 +7,7 @@ Script for running the music extractor
 import os
 import sys
 import argparse
+import numpy as np
 
 from uvic_music_extractor.extractors import Spectral
 import uvic_music_extractor.utils as utils
@@ -21,11 +22,15 @@ def main(arguments):
         formatter_class=argparse.RawDescriptionHelpFormatter)
 
     parser.add_argument('input', help="Input audio or directory", type=str)
+    parser.add_argument('output', help="Output csv file", type=str)
     parser.add_argument('--rate', '-r', help="Sample rate to run audio feature extraction", type=int, default=44100)
     parser.add_argument('--normalize', '-n', help="Normalize audio to a specified loudness in LUFS,"
                                                   "defaults to -24. Pass in no to disable",
                         default=float(-24.0))
     args = parser.parse_args(arguments)
+
+    # Check output before starting
+    output = os.path.abspath(args.output)
 
     # Look for audio files to perform feature extraction on
     audio_files = utils.get_audio_files(args.input)
@@ -35,7 +40,11 @@ def main(arguments):
     spectral = Spectral(args.rate)
 
     # Loop through all the audio files
+    results = []
+    header = ["filename"]
     for path in audio_files:
+
+        # Load audio
         samples = utils.load_audio(path, args.rate, mono=False)
 
         # Normalize loudness if required
@@ -46,14 +55,18 @@ def main(arguments):
         # Mix to mono and run extraction
         mono_samples = utils.mix_to_mono(samples)
         spectral_results = spectral(mono_samples)
-        print(spectral_results)
 
-        print(spectral.get_headers())
+        # Save results
+        file_result = [os.path.basename(path)]
+        file_result.extend(spectral_results)
+        results.append(file_result)
 
+        # Update header
+        header.extend(spectral.get_headers())
 
-
-    #spectral_results = spectral.runExtraction(args.input)
-    #print(spectral_results)
+    # Write
+    header_str = ",".join(header)
+    np.savetxt(output, results, fmt="%s", delimiter=",", header=header_str, comments="")
 
 
 if __name__ == '__main__':
