@@ -59,6 +59,13 @@ def load_audio(path, sample_rate, mono=True):
     if channels > 2:
         raise RuntimeError("Can't handle more than two audio channels.")
 
+    # If there is only one channel, duplicate the first over to the second.
+    # Essentia always loads as a stereo audio file and the right channel is
+    # all zeros in this case. We'll convert to a stereo file for some of the
+    # processing here such as the Loudness Normalization.
+    if channels == 1:
+        samples[:, 1] = samples[:, 0]
+
     # Mix to mono if required
     if mono:
         samples = mix_to_mono(samples)
@@ -68,7 +75,7 @@ def load_audio(path, sample_rate, mono=True):
         resample = es.Resample(inputSampleRate=orig_rate, outputSampleRate=sample_rate)
 
         # Resampling for a stereo audio file
-        if not mono and channels == 2:
+        if not mono:
             resampled_left = resample(samples[:, 0])
             resampled_right = resample(samples[:, 1])
             samples = np.array([resampled_left, resampled_right])
@@ -78,7 +85,7 @@ def load_audio(path, sample_rate, mono=True):
         else:
             samples = resample(samples)
 
-    return samples
+    return samples, channels
 
 
 def mix_to_mono(audio):

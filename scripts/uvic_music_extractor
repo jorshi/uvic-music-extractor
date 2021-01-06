@@ -45,7 +45,7 @@ def main(arguments):
     for path in audio_files:
 
         # Load audio
-        samples = utils.load_audio(path, args.rate, mono=False)
+        samples, channels = utils.load_audio(path, args.rate, mono=False)
 
         # Normalize loudness if required
         if not (type(args.normalize) == str and args.normalize.lower() == 'no'):
@@ -64,7 +64,7 @@ def main(arguments):
         # Update header
         header.extend(spectral.get_headers())
 
-    # Write
+    # Write to csv
     header_str = ",".join(header)
     np.savetxt(output, results, fmt="%s", delimiter=",", header=header_str, comments="")
 
