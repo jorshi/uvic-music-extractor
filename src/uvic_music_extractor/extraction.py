@@ -115,7 +115,7 @@ def distortion(sample):
     loader = es.MonoLoader(filename=sample, sampleRate=SR)
     audio = loader()
 
-    hist, edges = np.histogram(audio, 1001, (-1.0,1.0))
+    hist, edges = np.histogram(audio, 1001, (-1.0, 1.0))
     hist = np.array(hist, dtype=np.float32)
 
     centroidCalc = es.Centroid()
