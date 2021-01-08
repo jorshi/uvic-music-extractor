@@ -11,6 +11,8 @@ from scipy.stats import norm
 import essentia
 import essentia.standard as es
 
+import uvic_music_extractor.utils as utils
+
 
 class ExtractorBase(ABC):
     """
@@ -375,3 +377,106 @@ class PhaseCorrelation(ExtractorBase):
             phase_correlation = [correlation_matrix[0, 1]]
 
         return phase_correlation
+
+
+class StereoSpectrum(ExtractorBase):
+    """
+    Stereo Spectrum Features
+    """
+
+    def __init__(self, sample_rate: float, frame_size: int = 2048,
+                 hop_size: int = 1024, stats: list = None):
+        super().__init__(sample_rate, pooling=True, stats=stats)
+        self.frame_size = frame_size
+        self.hop_size = hop_size
+        self.low = 250
+        self.high = 2800
+        self.feature_names = ["sps_full", "sps_low", "sps_mid", "sps_high"]
+
+    def __call__(self, audio: np.ndarray):
+        """
+        Run stereo spectrum feature extraction
+
+        :param audio: Input audio samples
+        :return: feature matrix
+        """
+
+        # Must be stereo audio
+        assert audio.shape[1] == 2
+
+        # Hanning window
+        window = np.hanning(self.frame_size)
+
+        pool = essentia.Pool()
+        pool_agg = es.PoolAggregator(defaultStats=self.stats)
+
+        # Bin numbers for each filter bank
+        low_bin = int((self.low / self.sample_rate) * self.frame_size)
+        assert low_bin <= int(self.frame_size / 2)
+
+        high_bin = int((self.high / self.sample_rate) * self.frame_size)
+        assert high_bin <= int(self.frame_size / 2)
+
+        for i in range(0, len(audio), self.hop_size):
+            # Get the windowed frame for each channel
+            samples = audio[i:i+self.frame_size, :]
+            frame_left = np.zeros(self.frame_size)
+            frame_left[:len(samples)] = samples[:, 0]
+            frame_right = np.zeros(self.frame_size)
+            frame_right[:len(samples)] = samples[:, 1]
+
+            # Apply window
+            frame_left *= window
+            frame_right *= window
+
+            X_left = np.fft.rfft(frame_left)
+            X_right = np.fft.rfft(frame_right)
+
+            stereo_spectrum = StereoSpectrum.compute_stereo_spectrum(X_left, X_right)
+
+            # Features
+            full = utils.rms(stereo_spectrum)
+            low = utils.rms(stereo_spectrum[:low_bin])
+            mid = utils.rms(stereo_spectrum[low_bin:high_bin])
+            high = utils.rms(stereo_spectrum[high_bin:])
+
+            pool.add(self.feature_names[0], full)
+            pool.add(self.feature_names[1], low)
+            pool.add(self.feature_names[2], mid)
+            pool.add(self.feature_names[3], high)
+
+        stats = pool_agg(pool)
+        results = [stats[feature] for feature in self.get_headers()]
+
+        return results
+
+    @staticmethod
+    def compute_stereo_spectrum(spectrum_left, spectrum_right):
+
+        np.zeros_like(spectrum_left)
+
+        # Update the DC and Nyquist Bins
+        spectrum_left[0] = np.real(spectrum_left[0]) + 0j
+        spectrum_left[-1] = np.real(spectrum_left[-1]) + 0j
+        spectrum_right[0] = np.real(spectrum_right[0]) + 0j
+        spectrum_right[-1] = np.real(spectrum_right[-1]) + 0j
+
+        real_left = np.real(spectrum_left)
+        imag_left = np.imag(spectrum_left)
+        real_right = np.real(spectrum_right)
+        imag_right = np.imag(spectrum_right)
+
+        f1 = (real_left * real_right) * (real_left * real_right)
+        f2 = (imag_left * imag_right) * (imag_left * imag_right)
+        f3 = (imag_left * real_right) * (imag_left * real_right)
+        f4 = (imag_right * real_left) * (imag_right * real_left)
+        nf = np.sqrt(f1 + f2 + f3 + f4)
+        dfl = real_left * real_left + imag_left * imag_left
+        dfr = real_right * real_right + imag_right * imag_right
+        df = dfl + dfr
+
+        sign = nf / dfl - nf / dfr
+        sign[sign > 0] = 1.0
+        sign[sign < 0] = -1.0
+
+        return (1.0 - 2.0 * (nf / df)) * sign

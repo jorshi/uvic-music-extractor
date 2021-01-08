@@ -124,3 +124,17 @@ def normalize_loudness(audio, sample_rate, lufs=-24):
     normalized = audio * gain
 
     return normalized
+
+
+def rms(audio: np.ndarray) -> float:
+    """
+    Calculate the RMS level for an array
+
+    :param audio: input audio
+    :return: (float) rms
+    """
+    result = np.mean(audio * audio)
+    if result != 0.0:
+        result = np.sqrt(result)
+
+    return result
