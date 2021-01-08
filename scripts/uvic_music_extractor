@@ -56,6 +56,7 @@ def main(arguments):
     phase_100ms = extractors.PhaseCorrelation(args.rate, int(args.rate * 0.1))
     phase_100ms.feature_names = ["phase_correlation_100ms"]
     stereo_spectrum = extractors.StereoSpectrum(args.rate)
+    spectral_flux = extractors.SpectralFlux(args.rate)
 
     # Loop through all the audio files
     results = []
@@ -78,6 +79,7 @@ def main(arguments):
         cf_1s = crest_factor_1s(mono_samples)
         dyn_spread = dynamic_spread(mono_samples)
         dist = distortion(mono_samples)
+        flux = spectral_flux(mono_samples)
 
         # Stereo Extractors
         loudness_results = loudness(samples)
@@ -101,6 +103,7 @@ def main(arguments):
         file_result.extend(pc_1s)
         file_result.extend(pc_100ms)
         file_result.extend(sps)
+        file_result.extend(flux)
         results.append(file_result)
 
     # Update header
@@ -116,6 +119,7 @@ def main(arguments):
     header.extend(phase_1s.get_headers())
     header.extend(phase_100ms.get_headers())
     header.extend(stereo_spectrum.get_headers())
+    header.extend(spectral_flux.get_headers())
 
     # Write to csv
     header_str = ",".join(header)

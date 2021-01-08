@@ -480,3 +480,60 @@ class StereoSpectrum(ExtractorBase):
         sign[sign < 0] = -1.0
 
         return (1.0 - 2.0 * (nf / df)) * sign
+
+
+class SpectralFlux(ExtractorBase):
+    """
+    Spectral Flux Features
+    """
+
+    def __init__(self, sample_rate: float, frame_size: float = 2048,
+                 num_bands: int = 10, stats: list = None):
+        super().__init__(sample_rate, pooling=True, stats=stats)
+        self.frame_size = frame_size
+        self.num_bands = num_bands
+        self.band_str = "spectral_flux_band_{}"
+        self.feature_names = [self.band_str.format(i + 1) for i in range(self.num_bands)]
+
+    def __call__(self, audio: np.ndarray):
+        """
+        Run spectral flux calculations
+
+        :param audio: Input audio samples
+        :return: feature matrix
+        """
+
+        pool = essentia.Pool()
+        pool_agg = es.PoolAggregator(defaultStats=self.stats)
+
+        window = es.Windowing(type="hann", size=self.frame_size)
+        spectrum = es.Spectrum()
+
+        # Initialize a Flux algorithm for each band
+        sub_band_flux = [es.Flux() for i in range(self.num_bands)]
+
+        # Calculate octave bands
+        bands = [0]
+        bands.extend([50 * 2**i for i in range(self.num_bands - 1)])
+
+        # The top band must be less than the Nyquist
+        assert bands[-1] < self.sample_rate / 2
+        bands.append(self.sample_rate / 2)
+
+        # Bands in FFT bins
+        bands = np.round((np.array(bands) / self.sample_rate) * self.frame_size)
+
+        # Run frame-by-frame processing with a one half hop size
+        for frame in es.FrameGenerator(audio, self.frame_size, self.frame_size // 2):
+            win = window(frame)
+            spec = spectrum(win)
+
+            # Calculate flux for each sub band
+            for i in range(1, len(bands)):
+                sub_band = spec[int(bands[i-1]):int(bands[i])]
+                flux = sub_band_flux[i-1](sub_band)
+                pool.add(self.band_str.format(i), flux)
+
+        stats = pool_agg(pool)
+        results = [stats[feature] for feature in self.get_headers()]
+        return results
