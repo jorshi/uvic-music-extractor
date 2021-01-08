@@ -61,11 +61,27 @@ class Spectral(ExtractorBase):
     Spectral audio feature extraction
     """
 
-    def __init__(self, sample_rate: float, stats: list = None):
+    def __init__(
+            self, sample_rate: float,
+            frame_size: float = 2048,
+            stats: list = None
+    ):
         super().__init__(sample_rate, pooling=True, stats=stats)
-        self.feature_names = ["rolloff_85", "rolloff_95", "spectral_centroid", "spectral_spread",
-                "spectral_skewness", "spectral_kurtosis", "spectral_flatness", "spectral_entropy",
-                "harsh", "energyLF"]
+        self.frame_size = frame_size
+        self.feature_names = [
+            "rolloff_85",
+            "rolloff_95",
+            "spectral_centroid",
+            "spectral_spread",
+            "spectral_skewness",
+            "spectral_kurtosis",
+            "spectral_flatness",
+            "spectral_entropy",
+            "harsh",
+            "energy_lf",
+            "dissonance",
+            "inharmonicity"
+        ]
 
     def __call__(self, audio: np.ndarray):
         """
@@ -76,7 +92,7 @@ class Spectral(ExtractorBase):
 
         pool = essentia.Pool()
         pool_agg = es.PoolAggregator(defaultStats=self.stats)
-        window = es.Windowing(type="hann", size=2048)
+        window = es.Windowing(type="hann", size=self.frame_size)
         spectrum = es.Spectrum()
 
         # Spectral Features
@@ -86,12 +102,23 @@ class Spectral(ExtractorBase):
         flatness = es.Flatness()
         entropy = es.Entropy()
 
-        energy_band_harsh = es.EnergyBandRatio(sampleRate=self.sample_rate, startFrequency=2000, stopFrequency=5000)
-        energy_band_low = es.EnergyBandRatio(sampleRate=self.sample_rate, startFrequency=20, stopFrequency=80)
+        energy_band_harsh = es.EnergyBandRatio(sampleRate=self.sample_rate,
+                                               startFrequency=2000,
+                                               stopFrequency=5000)
+        energy_band_low = es.EnergyBandRatio(sampleRate=self.sample_rate,
+                                             startFrequency=20,
+                                             stopFrequency=80)
         rolloff_85 = es.RollOff(cutoff=0.85, sampleRate=self.sample_rate)
         rolloff_95 = es.RollOff(cutoff=0.95, sampleRate=self.sample_rate)
 
-        for frame in es.FrameGenerator(audio, 2048, 1024):
+        peaks = es.SpectralPeaks()
+        dissonance = es.Dissonance()
+        pitch_yin = es.PitchYinFFT(frameSize=self.frame_size,
+                                   sampleRate=self.sample_rate)
+        harmonic_peaks = es.HarmonicPeaks()
+        inharmonicity = es.Inharmonicity()
+
+        for frame in es.FrameGenerator(audio, self.frame_size, self.frame_size // 2):
 
             win = window(frame)
             spec = spectrum(win)
@@ -108,6 +135,20 @@ class Spectral(ExtractorBase):
             roll85 = rolloff_85(spec)
             roll95 = rolloff_95(spec)
 
+            # Spectral Peaks
+            peak_freqs, peak_mags = peaks(spec)
+
+            # Remove DC bin peak if it is present
+            if peak_freqs[0] == 0:
+                peak_freqs = peak_freqs[1:]
+                peak_mags = peak_mags[1:]
+
+            # Calculate dissonance and inharmonicity from peaks
+            dissonance_val = dissonance(peak_freqs, peak_mags)
+            pitch, _ = pitch_yin(spec)
+            harm_freqs, harm_mags = harmonic_peaks(peak_freqs, peak_mags, pitch)
+            inharm = inharmonicity(harm_freqs, harm_mags)
+
             keys = self.feature_names
             pool.add(keys[0], roll85)
             pool.add(keys[1], roll95)
@@ -119,6 +160,8 @@ class Spectral(ExtractorBase):
             pool.add(keys[7], spectral_entropy)
             pool.add(keys[8], harsh)
             pool.add(keys[9], energy_lf)
+            pool.add(keys[10], dissonance_val)
+            pool.add(keys[11], inharm)
 
         stats = pool_agg(pool)
         results = [stats[feature] for feature in self.get_headers()]
