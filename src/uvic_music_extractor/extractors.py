@@ -173,7 +173,12 @@ class CrestFactor(ExtractorBase):
     Crest Factor Extractor
     """
 
-    def __init__(self, sample_rate: float, frame_size: float = None, stats: list = None):
+    def __init__(
+            self,
+            sample_rate: float,
+            frame_size: float = None,
+            stats: list = None
+    ):
         super().__init__(sample_rate, pooling=frame_size is not None, stats=stats)
         self.frame_size = frame_size
         self.feature_names = ["crest_factor"]
@@ -221,8 +226,13 @@ class Loudness(ExtractorBase):
 
     def __init__(self, sample_rate: float, stats: list = None):
         super().__init__(sample_rate, pooling=False, stats=stats)
-        self.feature_names = ["loudness_range", "microdynamics_95%", "microdynamics_100%",
-                              "peak_to_loudness", "top1db"]
+        self.feature_names = [
+            "loudness_range",
+            "microdynamics_95%",
+            "microdynamics_100%",
+            "peak_to_loudness",
+            "top1db"
+        ]
 
     def __call__(self, audio: np.ndarray):
         """
@@ -266,7 +276,12 @@ class DynamicSpread(ExtractorBase):
     Dynamic Spread Feature Extractor
     """
 
-    def __init__(self, sample_rate: float, frame_size: float = 2048, stats: list = None):
+    def __init__(
+            self,
+            sample_rate: float,
+            frame_size: float = 2048,
+            stats: list = None
+    ):
         super().__init__(sample_rate, pooling=False, stats=stats)
         self.frame_size = frame_size
         self.feature_names = ["dynamic_spread"]
@@ -309,8 +324,14 @@ class Distortion(ExtractorBase):
 
     def __init__(self, sample_rate: float, stats: list = None):
         super().__init__(sample_rate, pooling=False, stats=stats)
-        self.feature_names = ["pmf_centroid", "pmf_spread", "pmf_skewness",
-                              "pmf_kurtosis", "pmf_flatness", "pmf_gauss"]
+        self.feature_names = [
+            "pmf_centroid",
+            "pmf_spread",
+            "pmf_skewness",
+            "pmf_kurtosis",
+            "pmf_flatness",
+            "pmf_gauss"
+        ]
 
     def __call__(self, audio: np.ndarray):
         """
@@ -385,7 +406,12 @@ class PhaseCorrelation(ExtractorBase):
     Phase Correlation Features
     """
 
-    def __init__(self, sample_rate: float, frame_size: float = None, stats: list = None):
+    def __init__(
+            self,
+            sample_rate: float,
+            frame_size: float = None,
+            stats: list = None
+    ):
         super().__init__(sample_rate, pooling=frame_size is not None, stats=stats)
         self.frame_size = frame_size
         self.feature_names = ["phase_correlation"]
@@ -427,8 +453,13 @@ class StereoSpectrum(ExtractorBase):
     Stereo Spectrum Features
     """
 
-    def __init__(self, sample_rate: float, frame_size: int = 2048,
-                 hop_size: int = 1024, stats: list = None):
+    def __init__(
+            self,
+            sample_rate: float,
+            frame_size: int = 2048,
+            hop_size: int = 1024,
+            stats: list = None
+    ):
         super().__init__(sample_rate, pooling=True, stats=stats)
         self.frame_size = frame_size
         self.hop_size = hop_size
@@ -530,8 +561,13 @@ class SpectralFlux(ExtractorBase):
     Spectral Flux Features
     """
 
-    def __init__(self, sample_rate: float, frame_size: float = 2048,
-                 num_bands: int = 10, stats: list = None):
+    def __init__(
+            self,
+            sample_rate: float,
+            frame_size: float = 2048,
+            num_bands: int = 10,
+            stats: list = None
+    ):
         super().__init__(sample_rate, pooling=True, stats=stats)
         self.frame_size = frame_size
         self.num_bands = num_bands
