@@ -69,14 +69,14 @@ class Spectral(ExtractorBase):
         super().__init__(sample_rate, pooling=True, stats=stats)
         self.frame_size = frame_size
         self.feature_names = [
-            "rolloff_85",
-            "rolloff_95",
             "spectral_centroid",
             "spectral_spread",
             "spectral_skewness",
             "spectral_kurtosis",
             "spectral_flatness",
             "spectral_entropy",
+            "rolloff_85",
+            "rolloff_95",
             "harsh",
             "energy_lf",
             "dissonance",
@@ -123,7 +123,6 @@ class Spectral(ExtractorBase):
             win = window(frame)
             spec = spectrum(win)
 
-            # Spectral Centroid
             sc = centroid(spec)
             moments = central_moments(spec)
             spread, skewness, kurtosis = dist_shape(moments)
@@ -149,15 +148,16 @@ class Spectral(ExtractorBase):
             harm_freqs, harm_mags = harmonic_peaks(peak_freqs, peak_mags, pitch)
             inharm = inharmonicity(harm_freqs, harm_mags)
 
+            # Add to pool for summarization
             keys = self.feature_names
-            pool.add(keys[0], roll85)
-            pool.add(keys[1], roll95)
-            pool.add(keys[2], sc)
-            pool.add(keys[3], spread)
-            pool.add(keys[4], skewness)
-            pool.add(keys[5], kurtosis)
-            pool.add(keys[6], spectral_flatness)
-            pool.add(keys[7], spectral_entropy)
+            pool.add(keys[0], sc)
+            pool.add(keys[1], spread)
+            pool.add(keys[2], skewness)
+            pool.add(keys[3], kurtosis)
+            pool.add(keys[4], spectral_flatness)
+            pool.add(keys[5], spectral_entropy)
+            pool.add(keys[6], roll85)
+            pool.add(keys[7], roll95)
             pool.add(keys[8], harsh)
             pool.add(keys[9], energy_lf)
             pool.add(keys[10], dissonance_val)
@@ -576,6 +576,44 @@ class SpectralFlux(ExtractorBase):
                 sub_band = spec[int(bands[i-1]):int(bands[i])]
                 flux = sub_band_flux[i-1](sub_band)
                 pool.add(self.band_str.format(i), flux)
+
+        stats = pool_agg(pool)
+        results = [stats[feature] for feature in self.get_headers()]
+        return results
+
+
+class ZeroCrossingRate(ExtractorBase):
+    """
+    Zero Crossing Rate
+    """
+
+    def __init__(
+            self,
+            sample_rate: float,
+            frame_size: float = 2048,
+            stats: list = None
+    ):
+        super().__init__(sample_rate, pooling=True, stats=stats)
+        self.frame_size = frame_size
+        self.feature_names = ["zero_crossing_rate"]
+
+    def __call__(self, audio: np.ndarray):
+        """
+        Run Zero-crossing rate feature
+
+        :param audio: Input audio samples
+        :return: feature matrix
+        """
+
+        zero_crossing_rate = es.ZeroCrossingRate()
+
+        pool = essentia.Pool()
+        pool_agg = es.PoolAggregator(defaultStats=self.stats)
+
+        # Run frame-by-frame processing with a one half hop size
+        for frame in es.FrameGenerator(audio, self.frame_size, self.frame_size // 2):
+            zcr = zero_crossing_rate(frame)
+            pool.add(self.feature_names[0], zcr)
 
         stats = pool_agg(pool)
         results = [stats[feature] for feature in self.get_headers()]

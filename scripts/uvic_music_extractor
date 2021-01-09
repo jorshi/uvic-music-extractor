@@ -37,17 +37,12 @@ def main(arguments):
     audio_files = utils.get_audio_files(args.input)
     print("Running feature extraction on {} files at a sampling rate of {}Hz".format(len(audio_files), args.rate))
 
-    # Setup Extractors
+    # Spectral Features
     spectral = extractors.Spectral(args.rate)
-    crest_factor_full = extractors.CrestFactor(args.rate)
-    crest_factor_full.feature_names = ["crest_factor_full"]
-    crest_factor_100ms = extractors.CrestFactor(args.rate, int(args.rate * 0.1))
-    crest_factor_100ms.feature_names = ["crest_factor_100ms"]
-    crest_factor_1s = extractors.CrestFactor(args.rate, int(args.rate))
-    crest_factor_1s.feature_names = ["crest_factor_1s"]
-    loudness = extractors.Loudness(args.rate)
-    dynamic_spread = extractors.DynamicSpread(args.rate)
-    distortion = extractors.Distortion(args.rate)
+    spectral_flux = extractors.SpectralFlux(args.rate)
+    zero_cross_rate = extractors.ZeroCrossingRate(args.rate)
+
+    # Stereo Features
     stereo_features = extractors.StereoFeatures(args.rate)
     phase_full = extractors.PhaseCorrelation(args.rate)
     phase_full.feature_names = ["phase_correlation_full"]
@@ -56,7 +51,17 @@ def main(arguments):
     phase_100ms = extractors.PhaseCorrelation(args.rate, int(args.rate * 0.1))
     phase_100ms.feature_names = ["phase_correlation_100ms"]
     stereo_spectrum = extractors.StereoSpectrum(args.rate)
-    spectral_flux = extractors.SpectralFlux(args.rate)
+
+    # Loudness and distortion features
+    loudness = extractors.Loudness(args.rate)
+    dynamic_spread = extractors.DynamicSpread(args.rate)
+    crest_factor_full = extractors.CrestFactor(args.rate)
+    crest_factor_full.feature_names = ["crest_factor_full"]
+    crest_factor_100ms = extractors.CrestFactor(args.rate, int(args.rate * 0.1))
+    crest_factor_100ms.feature_names = ["crest_factor_100ms"]
+    crest_factor_1s = extractors.CrestFactor(args.rate, int(args.rate))
+    crest_factor_1s.feature_names = ["crest_factor_1s"]
+    distortion = extractors.Distortion(args.rate)
 
     # Loop through all the audio files
     results = []
@@ -74,52 +79,59 @@ def main(arguments):
         # Mix to mono and run extraction
         mono_samples = utils.mix_to_mono(samples)
         spectral_results = spectral(mono_samples)
+        flux = spectral_flux(mono_samples)
+        zcr = zero_cross_rate(mono_samples)
+        dyn_spread = dynamic_spread(mono_samples)
         cf_full = crest_factor_full(mono_samples)
         cf_100ms = crest_factor_100ms(mono_samples)
         cf_1s = crest_factor_1s(mono_samples)
-        dyn_spread = dynamic_spread(mono_samples)
         dist = distortion(mono_samples)
-        flux = spectral_flux(mono_samples)
 
         # Stereo Extractors
-        loudness_results = loudness(samples)
         stereo_results = stereo_features(samples)
         pc_full = phase_full(samples)
         pc_1s = phase_1s(samples)
         pc_100ms = phase_100ms(samples)
         sps = stereo_spectrum(samples)
+        loudness_results = loudness(samples)
 
         # Save results
         file_result = [os.path.basename(path)]
         file_result.extend(spectral_results)
-        file_result.extend(cf_full)
-        file_result.extend(cf_100ms)
-        file_result.extend(cf_1s)
-        file_result.extend(loudness_results)
-        file_result.extend(dyn_spread)
-        file_result.extend(dist)
+        file_result.extend(flux)
+        file_result.extend(zcr)
+
         file_result.extend(stereo_results)
         file_result.extend(pc_full)
         file_result.extend(pc_1s)
         file_result.extend(pc_100ms)
         file_result.extend(sps)
-        file_result.extend(flux)
+
+        file_result.extend(loudness_results)
+        file_result.extend(dyn_spread)
+        file_result.extend(cf_full)
+        file_result.extend(cf_1s)
+        file_result.extend(cf_100ms)
+        file_result.extend(dist)
         results.append(file_result)
 
     # Update header
     header.extend(spectral.get_headers())
-    header.extend(crest_factor_full.get_headers())
-    header.extend(crest_factor_100ms.get_headers())
-    header.extend(crest_factor_1s.get_headers())
-    header.extend(loudness.get_headers())
-    header.extend(dynamic_spread.get_headers())
-    header.extend(distortion.get_headers())
+    header.extend(spectral_flux.get_headers())
+    header.extend(zero_cross_rate.get_headers())
+
     header.extend(stereo_features.get_headers())
     header.extend(phase_full.get_headers())
     header.extend(phase_1s.get_headers())
     header.extend(phase_100ms.get_headers())
     header.extend(stereo_spectrum.get_headers())
-    header.extend(spectral_flux.get_headers())
+
+    header.extend(loudness.get_headers())
+    header.extend(dynamic_spread.get_headers())
+    header.extend(crest_factor_full.get_headers())
+    header.extend(crest_factor_1s.get_headers())
+    header.extend(crest_factor_100ms.get_headers())
+    header.extend(distortion.get_headers())
 
     # Write to csv
     header_str = ",".join(header)
