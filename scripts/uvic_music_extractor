@@ -13,6 +13,7 @@ from tqdm import tqdm
 import uvic_music_extractor.extractors as extractors
 import uvic_music_extractor.utils as utils
 
+
 def main(arguments):
     """
     Script entry
