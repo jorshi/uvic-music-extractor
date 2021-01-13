@@ -21,3 +21,4 @@ data/
 # Testing files
 test_audio/
 test_output/
+test_notebooks/

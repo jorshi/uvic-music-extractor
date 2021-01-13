@@ -2,12 +2,17 @@
 
 """
 Audio Feature Extractors
+
+A set of algorithms for analyzing audio files. Most of the features are built
+using building blocks from the Essentia audio and music analysis toolkit:
+https://essentia.upf.edu/index.html
 """
 
 from abc import ABC, abstractmethod
 import math
+
 import numpy as np
-from scipy.stats import norm
+from scipy.stats import norm, linregress
 import essentia
 import essentia.standard as es
 
@@ -58,7 +63,10 @@ class ExtractorBase(ABC):
 
 class Spectral(ExtractorBase):
     """
-    Spectral audio feature extraction
+    Spectral audio feature extraction.
+
+    :param sample_rate (int): rate to run extractors at
+    :param stats (list): stats to run during pooling aggregation (if used)
     """
 
     def __init__(
@@ -90,18 +98,19 @@ class Spectral(ExtractorBase):
         :return: feature matrix
         """
 
+        # Pooling for summarizing results over time
         pool = essentia.Pool()
         pool_agg = es.PoolAggregator(defaultStats=self.stats)
+
         window = es.Windowing(type="hann", size=self.frame_size)
         spectrum = es.Spectrum()
 
-        # Spectral Features
+        # Spectral feature extractors
         centroid = es.Centroid(range=self.sample_rate/2)
         central_moments = es.CentralMoments(range=self.sample_rate/2)
         dist_shape = es.DistributionShape()
         flatness = es.Flatness()
         entropy = es.Entropy()
-
         energy_band_harsh = es.EnergyBandRatio(sampleRate=self.sample_rate,
                                                startFrequency=2000,
                                                stopFrequency=5000)
@@ -111,6 +120,7 @@ class Spectral(ExtractorBase):
         rolloff_85 = es.RollOff(cutoff=0.85, sampleRate=self.sample_rate)
         rolloff_95 = es.RollOff(cutoff=0.95, sampleRate=self.sample_rate)
 
+        # Extractors for calculating dissonance and inharmonicity
         peaks = es.SpectralPeaks()
         dissonance = es.Dissonance()
         pitch_yin = es.PitchYinFFT(frameSize=self.frame_size,
@@ -118,11 +128,14 @@ class Spectral(ExtractorBase):
         harmonic_peaks = es.HarmonicPeaks()
         inharmonicity = es.Inharmonicity()
 
+        # Frame-by-frame computation
         for frame in es.FrameGenerator(audio, self.frame_size, self.frame_size // 2):
 
+            # Window frame and compute spectrum
             win = window(frame)
             spec = spectrum(win)
 
+            # Spectral feature extraction
             sc = centroid(spec)
             moments = central_moments(spec)
             spread, skewness, kurtosis = dist_shape(moments)
@@ -171,6 +184,11 @@ class Spectral(ExtractorBase):
 class CrestFactor(ExtractorBase):
     """
     Crest Factor Extractor
+
+    Peak-to-average ratio where peak is the the maximum amplitude level and
+    average is the RMS value.
+
+    https://en.wikipedia.org/wiki/Crest_factor
     """
 
     def __init__(
@@ -222,6 +240,36 @@ class CrestFactor(ExtractorBase):
 class Loudness(ExtractorBase):
     """
     Loudness Features
+
+
+    Loudness Range
+    --------------
+    Loudness range is computed from short-term loudness values. It is defined as the
+    difference between the estimates of the 10th and 95th percentiles of the
+    distribution of the loudness values with applied gating. See Essentia documentation
+    for more information: https://essentia.upf.edu/reference/std_LoudnessEBUR128.html
+
+    EBU Tech Doc 3342-2011. "Loudness Range: A measure to supplement loudness
+    normalisation in accordance with EBU R 128"
+
+    LDR_95, LDR_max, peak-to-loudness
+    --------------------------------
+    LDR is a measurement of microdynamics. It is computed by taking the difference
+    between loudness measurements using a fast integration time and a slow integration
+    time, then computing the maximum or 95 percentile value from those results.
+
+    Peak-to-loudness is computed by taking the ratio between the true peak amplitude
+    and the overall loudness.
+
+    Skovenborg, Esben. "Measures of microdynamics." Audio Engineering Society
+    Convention 137. Audio Engineering Society, 2014.
+
+    top1db
+    ------
+    Ratio of audio samples in the range [-1dB, 0dB]
+
+    Tardieu, Damien, et al. "Production effect: audio features for recording
+    techniques description and decade prediction." 2011.
     """
 
     def __init__(self, sample_rate: float, stats: list = None):
@@ -236,7 +284,7 @@ class Loudness(ExtractorBase):
 
     def __call__(self, audio: np.ndarray):
         """
-        Run loudness feature extraction
+        Run loudness / dynamics feature extraction
 
         :param audio: Input audio samples
         :return: feature matrix
@@ -273,7 +321,13 @@ class Loudness(ExtractorBase):
 
 class DynamicSpread(ExtractorBase):
     """
-    Dynamic Spread Feature Extractor
+    Dynamic Spread Feature Extractor. Measure of the loudness spread across the audio
+    file. The difference between the loudness (using Vickers algorithm) for each frame
+    compared to the average loudness of the entire track is computed. Then, the average
+    of that is computed.
+
+    Vickers, Earl. "Automatic long-term loudness and dynamics matching." Audio
+    Engineering Society Convention 111. Audio Engineering Society, 2001.
     """
 
     def __init__(
@@ -319,7 +373,18 @@ class DynamicSpread(ExtractorBase):
 
 class Distortion(ExtractorBase):
     """
-    Set of distortion features
+    Set of distortion features -- computes a probability density function on audio
+    samples using a histogram with 1001 bins. Several statistics are computed on the
+    resulting pdf including the centroid, spread, skewness, kurtosis, flatness, and
+    the 'gauss' feature. 'Gauss' is a measurement of the gaussian fit of the the pdf.
+
+    Wilson, Alex, and Bruno Fazenda. "Characterisation of distortion profiles in
+    relation to audio quality." Proc. of the 17th Int. Conference on Digital Audio
+    Effects (DAFx-14). 2014.
+
+    Wilson, A. D., and B. M. Fazenda. "Perception & evaluation of audio quality in
+    music production." Proc. of the 16th Int. Conference on Digital Audio Effects
+    (DAFx-13). 2013.
     """
 
     def __init__(self, sample_rate: float, stats: list = None):
@@ -341,9 +406,11 @@ class Distortion(ExtractorBase):
         :return: feature matrix
         """
 
-        hist, edges = np.histogram(audio, 1001, (-1.0, 1.0))
+        # Compute PDF of audio sample amplitudes
+        hist, edges = np.histogram(audio, bins=1001, range=(-1.0, 1.0), density=True)
         hist = np.array(hist, dtype=np.float32)
 
+        # Analysis of PDF shape
         centroid_calc = es.Centroid()
         centroid = centroid_calc(hist)
 
@@ -356,17 +423,12 @@ class Distortion(ExtractorBase):
         flatness_calc = es.Flatness()
         flatness = flatness_calc(hist)
 
-        prime = np.zeros(1000)
-        for i in range(1, 1000):
-            dy = abs(hist[i] - hist[i - 1])
-            prime[i - 1] = dy
+        # Compute r squared value of guassian fit
+        mu, std = norm.fit(audio)
+        gauss = norm.pdf(np.linspace(-1.0, 1.0, 1001), mu, std)
 
-        domain = np.linspace(-1.0, 1.0, 1000)
-        gauss_hist = norm.pdf(domain, 0.0, 0.2)
-
-        correlation_matrix = np.corrcoef(prime, gauss_hist)
-        correlation_xy = correlation_matrix[0, 1]
-        r_squared = correlation_xy ** 2
+        _, _, rvalue, _, _ = linregress(gauss, hist)
+        r_squared = rvalue ** 2
 
         return [centroid, spread, skewness, kurtosis, flatness, r_squared]
 
