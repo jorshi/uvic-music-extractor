@@ -661,7 +661,15 @@ class StereoSpectrum(ExtractorBase):
 
 class SpectralFlux(ExtractorBase):
     """
-    Spectral Flux Features
+    Spectral Flux Features. Performs spectral flux analysis using sub-bands from
+    an octave spaced filter bank decomposition.
+
+    Alluri, Vinoo, and Petri Toiviainen. "Exploring perceptual and acoustical
+    correlates of polyphonic timbre." Music Perception 27.3 (2010): 223-242.
+
+    Tzanetakis, George, and Perry Cook. "Multifeature audio segmentation for browsing
+    and annotation." Proceedings of the 1999 IEEE Workshop on Applications of Signal
+    Processing to Audio and Acoustics. WASPAA'99 (Cat. No. 99TH8452). IEEE, 1999.
     """
 
     def __init__(
