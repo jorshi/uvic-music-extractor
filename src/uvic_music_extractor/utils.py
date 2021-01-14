@@ -9,6 +9,7 @@ University of Victoria
 
 import os
 import numpy as np
+from scipy.signal import ellip, sosfilt
 import essentia.standard as es
 
 
@@ -138,3 +139,59 @@ def rms(audio: np.ndarray) -> float:
         result = np.sqrt(result)
 
     return result
+
+
+def octave_filter_bank(
+        audio: np.ndarray,
+        sample_rate: float,
+        num_bands: int = 10,
+        low_band: float = 50,
+) -> np.ndarray:
+    """
+    Split an audio signal in octave bands.
+
+    :param audio: input audio
+    :param sample_rate: audio sampling rate
+    :param num_bands: number of bands to compute
+    :param low_band: lowest band to start at (lowpass up to this)
+    :return: a matrix of audio signals
+    """
+
+    # Create the lowpass filter
+    filters = []
+    sos_low = ellip(2, 3, 60, low_band, btype='lowpass', fs=sample_rate, output='sos')
+    filters.append(sos_low)
+
+    # Calculate the filters for the octave spaced bandpasses
+    low_freq = low_band
+    high_freq = low_freq
+    for i in range(num_bands - 2):
+        high_freq = low_freq * 2
+
+        # Check to make sure that the high band is not above the Nyquist
+        if high_freq >= sample_rate / 2:
+            raise RuntimeError(
+                "Sample rate too low for {} band octave filterbank. Running with {} "
+                "bands instead".format(num_bands, i + 2)
+            )
+            high_freq = low_freq
+            break
+
+        # Create the filter for this band
+        sos_band = ellip(2, 3, 60, [low_freq, high_freq], btype='bandpass',
+                         fs=sample_rate, output='sos')
+        filters.append(sos_band)
+        low_freq = high_freq
+
+    # Now create the highpass filter from the highest band to the Nyquist
+    sos_high = ellip(2, 3, 60, high_freq, btype='highpass',
+                     fs=sample_rate, output='sos')
+    filters.append(sos_high)
+
+    # Apply filters to audio
+    filtered_audio = np.zeros((len(filters), len(audio)))
+    for i in range(len(filters)):
+        y = sosfilt(filters[i], audio)
+        filtered_audio[i] = y
+
+    return filtered_audio
