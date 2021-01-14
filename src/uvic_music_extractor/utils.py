@@ -3,7 +3,7 @@
 """
 Utility functions
 
-Jordie Shier
+Jordie Shier - jshier@uvic.ca
 University of Victoria
 """
 

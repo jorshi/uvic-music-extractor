@@ -6,6 +6,9 @@ Audio Feature Extractors
 A set of algorithms for analyzing audio files. Most of the features are built
 using building blocks from the Essentia audio and music analysis toolkit:
 https://essentia.upf.edu/index.html
+
+Jordie Shier - jshier@uvic.ca
+University of Victoria
 """
 
 from abc import ABC, abstractmethod
