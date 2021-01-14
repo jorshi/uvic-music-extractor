@@ -7,6 +7,8 @@ An audio feature extraction toolkit that was designed to provide a comprehensive
 - Python 3.6 or greater
 - [Essentia](https://essentia.upf.edu/index.html) -- see installation guide: https://essentia.upf.edu/installing.html. Unfortunately Essentia python bindings are not available on Windows at the time of writing.
 
+**Installation:**
+
 Once you have Python and Essentia installed, this git repo can be cloned and the package installed.
 
 ```
@@ -21,6 +23,34 @@ python
 >>> import essentia
 >>> 
 ```
+
+## Usage
+
+The main way to use this tool is through the command line. After installation the following command can be invoked from the command line. It doesn't have to be called from the same folder as the source code (i.e. you can move to a directory that contains a folder/file for analysis and access the command). 
+
+```
+uvic_music_extractor input output [-h] [--rate] [--normalize] 
+```
+
+Positional arguments. These are required.
+
+- `input`: A folder containing audio files to process or a single audio file to process.
+- `output`: Location/name of the csv file to output.
+
+Optional arguments:
+- `--rate`: Sample rate to run extraction at. Input audio files will be resampled to this rate if required. Defaults to 44100Hz.
+- `--normalize`: Loudness in LUFS to normalize input audio files to. Defaults to `-24` LUFS. Pass in `no` to turn off normalization.
+- `-h`: Output the help message
+
+**Examples**
+
+Example running on a single file with default settings:
+
+`uvic_music_extractor ./test_audio.wav ./output_features.csv`
+
+Example running on a folder at a sampling rate of 48kHz and normalization to -18LUFs:
+
+`uvic_music_extractor ./test_audio_folder/ ./output_features.csv --rate 48000 --normalize -18`
 
 ### References
 
