@@ -1,5 +1,5 @@
 # uvic-music-extractor
-An audio feature extraction toolkit that was designed to provide a comprehensive selection of audio features for analyzing music. The choosen features were selected based on previous work conducted in the field of intelligent music production and audio recording research [1-5]. While most these features are currently available in existing audio feature extraction libraries, they are spread out over several different libraries written in different programming languages. The goal of this tool is to provide access to a large selection of commonly used features in a single Python package with limited dependencies. Specifcally, this package is written using [Essentia](https://essentia.upf.edu/index.html).
+An audio feature extraction toolkit designed to provide a comprehensive selection of audio features for analyzing music. The choosen features were selected based on previous work in the field of intelligent music production and audio recording research [1-5]. While most these features are available in existing audio feature extraction libraries, they are spread out over several different libraries written in different programming languages. The goal of this tool is to provide access to a large selection of commonly used features in a single Python package with limited dependencies. Specifcally, this package is written using [Essentia](https://essentia.upf.edu/index.html).
 
 ## Installation
 
@@ -78,7 +78,7 @@ Loudness range is computed from short-term loudness values. It is defined as the
 
 **Microdynamics (LDR)**
 
-LDR is a measurement of microdynamics. It is computed by taking the differencebetween loudness measurements using a fast integration time and a slow integration time, then computing the maximum or 95 percentile value from those results [10].
+LDR is a measurement of microdynamics. It is computed by taking the difference between loudness measurements using a fast integration time and a slow integration time, then computing the maximum and 95 percentile value from those results [10].
 
 **Peak-to-loudness**
 
@@ -90,21 +90,21 @@ Ratio of audio samples in the range [-1dB, 0dB] [11].
 
 **Dynamic Spread**
 
-Dynamic Spread Feature Extractor. Measure of the loudness spread across the audio file. The difference between the loudness (using Vickers algorithm) for each frame compared to the average loudness of the entire track is computed. Then, the average of that is computed [12].
+Measure of the loudness spread across the audio file. The difference between the loudness (using Vickers algorithm) for each frame compared to the average loudness of the entire track is computed. Then, the average of that is computed [12].
 
 ### Distortion
 
-Set of distortion features -- computes a probability mass function on audio samples using a histogram with 1001 bins. Several statistics are computed on the resulting pmf including the centroid, spread, skewness, kurtosis, flatness, and the 'gauss' feature. 'Gauss' is a measurement of the gaussian fit of the the pmf [1, 13].
+Set of distortion features -- computes a probability mass function (pmf) on audio samples using a histogram with 1001 bins. Several statistics are computed on the resulting pmf including the centroid, spread, skewness, kurtosis, flatness, and the 'gauss' feature. 'Gauss' is a measurement of the gaussian fit of the the pmf [1, 13].
 
 ### Stereo Features
 
 Side-to-mid ratio and left/right imbalance [2]
 
 **Phase Correlation**
-Calculates the correlation coefficient between the left and right channel. Computes phase correlation over the entire track as well as using short-time processing sing a frame size of 2048 with no overlap. Short-time results are summarized using mean and standard deviation. A value of +1 indicates the left and right channels are completely correlation (the same), a value of 0 indicates the left and right channels are not correlated, and a value of -1 indicates the left and right channels are completely out of phase. 
+Calculates the correlation coefficient between the left and right channel. Computes phase correlation over the entire track as well as using short-time processing sing a frame size of 2048 with no overlap. Short-time results are summarized using mean and standard deviation. A value of +1 indicates the left and right channels are completely correlated (the same), a value of 0 indicates the left and right channels are not correlated, and a value of -1 indicates the left and right channels are completely out of phase.
 
 **Stereo Spectrum**
-Stereo Spectrum Features. Panning features computed using spectrums from the left and right audio channels. Returns features from the entire spectrum as well as three subbands which include 0-250Hz, 250-2800Hz, and 2800+ Hz [14].
+Stereo Spectrum Features. Panning features computed using spectrums from the left and right audio channels. Returns features from the entire spectrum as well as three sub-bands which include 0-250Hz, 250-2800Hz, and 2800+ Hz [14].
 
 ### Other
 
