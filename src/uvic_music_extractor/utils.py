@@ -188,7 +188,7 @@ def octave_filter_bank(
     filters.append(sos_high)
 
     # Apply filters to audio
-    filtered_audio = np.zeros((len(filters), len(audio)))
+    filtered_audio = np.zeros((len(filters), len(audio)), dtype=np.float32)
     for i in range(len(filters)):
         y = sosfilt(filters[i], audio)
         filtered_audio[i] = y

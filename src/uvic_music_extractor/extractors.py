@@ -667,7 +667,7 @@ class SpectralFlux(ExtractorBase):
     def __init__(
             self,
             sample_rate: float,
-            frame_size: float = 2048,
+            frame_size: int = 2048,
             num_bands: int = 10,
             stats: list = None
     ):
@@ -687,36 +687,36 @@ class SpectralFlux(ExtractorBase):
         :return: feature matrix
         """
 
+        # Pooling for time summarization
         pool = essentia.Pool()
         pool_agg = es.PoolAggregator(defaultStats=self.stats)
 
+        # Window and spectrum for spectral processing
         window = es.Windowing(type="hann", size=self.frame_size)
         spectrum = es.Spectrum()
 
-        # Initialize a Flux algorithm for each band
-        sub_band_flux = [es.Flux() for i in range(self.num_bands)]
+        # Apply filter bank to audio signal
+        sub_band_audio = utils.octave_filter_bank(
+            audio,
+            self.sample_rate,
+            self.num_bands,
+            50
+        )
 
-        # Calculate octave bands
-        bands = [0]
-        bands.extend([50 * 2**i for i in range(self.num_bands - 1)])
+        # Filter bank should return the same number of sub-bands as requested
+        assert len(sub_band_audio) == self.num_bands
 
-        # The top band must be less than the Nyquist
-        assert bands[-1] < self.sample_rate / 2
-        bands.append(self.sample_rate / 2)
+        # Perform spectral flux analysis on each sub-band
+        for i in range(len(sub_band_audio)):
+            sub_band_flux = es.Flux()
+            pool_key = self.band_str.format(i + 1)
 
-        # Bands in FFT bins
-        bands = np.round((np.array(bands) / self.sample_rate) * self.frame_size)
-
-        # Run frame-by-frame processing with a one half hop size
-        for frame in es.FrameGenerator(audio, self.frame_size, self.frame_size // 2):
-            win = window(frame)
-            spec = spectrum(win)
-
-            # Calculate flux for each sub band
-            for i in range(1, len(bands)):
-                sub_band = spec[int(bands[i-1]):int(bands[i])]
-                flux = sub_band_flux[i-1](sub_band)
-                pool.add(self.band_str.format(i), flux)
+            hop_size = int(self.frame_size / 2)
+            for frame in es.FrameGenerator(sub_band_audio[i], self.frame_size, hop_size):
+                win = window(frame)
+                spec = spectrum(win)
+                flux = sub_band_flux(spec)
+                pool.add(pool_key, flux)
 
         stats = pool_agg(pool)
         results = [stats[feature] for feature in self.get_headers()]
