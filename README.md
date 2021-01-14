@@ -52,7 +52,51 @@ Example running on a folder at a sampling rate of 48kHz and normalization to -18
 
 `uvic_music_extractor ./test_audio_folder/ ./output_features.csv --rate 48000 --normalize -18`
 
-### References
+
+## Feature list
+
+### Spectral
+
+**Spectral Features**
+
+A set of spectral features. Defaults to using a frame size of 2048 with half-overlap and a Hann window. Frame-by-frame results are summarized using the mean and standard deviation.
+- spectral centroid, spectral spread, spectral skewness, spectral kurtosis, spectral flatness, spectral entropy, rolloff 85%, rolloff 95%, harsh energy, low frequency energy, dissonance, inharmonicity. See [Essentia documenation](https://essentia.upf.edu/algorithms_reference.html) for more information.
+
+**Spectral Flux**
+
+Spectral Flux Features. Performs spectral flux analysis using sub-bands from an octave spaced filter bank decomposition. Defaults to a 10-band octave filterbank with the lowest band from 0-50Hz. Uses a 2048 window with half overlap. [6,7]
+
+### Loudness & Dynamics
+
+**Crest Factor**
+
+Peak-to-average ratio where peak is the the maximum amplitude level and average is the RMS value. Computed over the entire input signal as well as with frame-by-frame processing using frame sizes of 100ms and 1s. Frame-by-frame results are summarized using the mean and standard deviation over frames. [8]
+
+**Loudness Range**
+
+Loudness range is computed from short-term loudness values. It is defined as the difference between the estimates of the 10th and 95th percentiles of the distribution of the loudness values with applied gating [9]. See Essentia documentation for more information: https://essentia.upf.edu/reference/std_LoudnessEBUR128.html
+
+**Microdynamics (LDR)**
+
+LDR is a measurement of microdynamics. It is computed by taking the differencebetween loudness measurements using a fast integration time and a slow integration time, then computing the maximum or 95 percentile value from those results [10].
+
+**Peak-to-loudness**
+
+Peak-to-loudness is computed by taking the ratio between the true peak amplitude and the overall loudness [10].
+
+**Top1dB**
+
+Ratio of audio samples in the range [-1dB, 0dB] [11].
+
+**Dynamic Spread**
+
+Dynamic Spread Feature Extractor. Measure of the loudness spread across the audio file. The difference between the loudness (using Vickers algorithm) for each frame compared to the average loudness of the entire track is computed. Then, the average of that is computed [12].
+
+### Distortion
+
+Set of distortion features -- computes a probability mass function on audio samples using a histogram with 1001 bins. Several statistics are computed on the resulting pmf including the centroid, spread, skewness, kurtosis, flatness, and the 'gauss' feature. 'Gauss' is a measurement of the gaussian fit of the the pmf [1, 13].
+
+## References
 
 [1] Wilson, A. D., and B. M. Fazenda. "Perception & evaluation of audio quality in music production." Proc. of the 16th Int. Conference on Digital Audio Effects (DAFx-13). 2013.
 
@@ -63,3 +107,24 @@ Example running on a folder at a sampling rate of 48kHz and normalization to -18
 [4] Wilson, Alex, and Bruno Fazenda. "Variation in multitrack mixes: analysis of low-level audio signal features." Journal of the Audio Engineering Society 64.7/8 (2016): 466-473.
 
 [5] Exploring Preference for Multitrack Mixes Using Statistical Analysis of MIR and Textual Features
+
+[6] Alluri, Vinoo, and Petri Toiviainen. "Exploring perceptual and acoustical correlates of polyphonic timbre." Music Perception 27.3 (2010): 223-242.
+
+[7] Tzanetakis, George, and Perry Cook. "Multifeature audio segmentation for browsingand annotation." Proceedings of the 1999 IEEE Workshop on Applications of Signal Processing to Audio and Acoustics. WASPAA'99 (Cat. No. 99TH8452). IEEE, 1999.
+
+[8] https://en.wikipedia.org/wiki/Crest_factor
+
+[9] EBU Tech Doc 3342-2011. "Loudness Range: A measure to supplement loudness normalisation in accordance with EBU R 128"
+
+[10] Skovenborg, Esben. "Measures of microdynamics." Audio Engineering Society Convention 137. Audio Engineering Society, 2014.
+
+[11] Tardieu, Damien, et al. "Production effect: audio features for recording techniques description and decade prediction." 2011.
+
+[12] Vickers, Earl. "Automatic long-term loudness and dynamics matching." Audio Engineering Society Convention 111. Audio Engineering Society, 2001.
+
+[13] Wilson, Alex, and Bruno Fazenda. "Characterisation of distortion profiles in relation to audio quality." Proc. of the 17th Int. Conference on Digital Audio Effects (DAFx-14). 2014.
+
+## Development
+**Custom Scripts and Extractors**
+
+This package is setup to be extensible and to support usage of the individual audio feature extractors independently of the main script. All extractor classes are available at `src/uvic_music_extractor/extractors.py`. See the main script: `scripts/uvic_music_extractor` for an example on how to put together the extractors into a script. Custom extractors can also be built by inheriting from the `ExtractorBase` class in the `extractors` module. See the implemented extractors in the `extractors` module for examples on how this works.
