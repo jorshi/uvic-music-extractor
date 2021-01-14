@@ -23,8 +23,10 @@ class ExtractorBase(ABC):
     """
     Base class for audio feature extractors
 
-    :param sample_rate (int): rate to run extractors at
-    :param stats (list): stats to run during pooling aggregation (if used)
+    :param sample_rate (int): rate to run extraction at
+    :param pooling (bool): indicates whether results of this extractor are summarized
+        over time using pooling.
+    :param stats (list): stats to run during pooling aggregation (if used).
     """
 
     def __init__(self, sample_rate: float, pooling: bool = False, stats: list = None):
@@ -65,8 +67,10 @@ class Spectral(ExtractorBase):
     """
     Spectral audio feature extraction.
 
-    :param sample_rate (int): rate to run extractors at
-    :param stats (list): stats to run during pooling aggregation (if used)
+    :param sample_rate (int): rate to run extraction at
+    :param frame_size (int): size of frame to use for spectral processing
+    :param stats (list): stats to run during pooling aggregation (time summarization of
+        spectral results)
     """
 
     def __init__(
@@ -189,6 +193,10 @@ class CrestFactor(ExtractorBase):
     average is the RMS value.
 
     https://en.wikipedia.org/wiki/Crest_factor
+
+    :param sample_rate (int): rate to run extraction at
+    :param frame_size (int): size of frame to use
+    :param stats (list): stats to run during pooling aggregation (time summarization)
     """
 
     def __init__(
@@ -270,10 +278,12 @@ class Loudness(ExtractorBase):
 
     Tardieu, Damien, et al. "Production effect: audio features for recording
     techniques description and decade prediction." 2011.
+
+    :param sample_rate (int): rate to run extraction at
     """
 
-    def __init__(self, sample_rate: float, stats: list = None):
-        super().__init__(sample_rate, pooling=False, stats=stats)
+    def __init__(self, sample_rate: float):
+        super().__init__(sample_rate, pooling=False, stats=None)
         self.feature_names = [
             "loudness_range",
             "microdynamics_95%",
@@ -328,15 +338,17 @@ class DynamicSpread(ExtractorBase):
 
     Vickers, Earl. "Automatic long-term loudness and dynamics matching." Audio
     Engineering Society Convention 111. Audio Engineering Society, 2001.
+
+    :param sample_rate (int): rate to run extraction at
+    :param frame_size (int): size of frame to use. Defaults to 2048.
     """
 
     def __init__(
             self,
             sample_rate: float,
             frame_size: float = 2048,
-            stats: list = None
     ):
-        super().__init__(sample_rate, pooling=False, stats=stats)
+        super().__init__(sample_rate, pooling=False, stats=None)
         self.frame_size = frame_size
         self.feature_names = ["dynamic_spread"]
 
@@ -385,10 +397,12 @@ class Distortion(ExtractorBase):
     Wilson, A. D., and B. M. Fazenda. "Perception & evaluation of audio quality in
     music production." Proc. of the 16th Int. Conference on Digital Audio Effects
     (DAFx-13). 2013.
+
+    :param sample_rate (int): rate to run extraction at
     """
 
-    def __init__(self, sample_rate: float, stats: list = None):
-        super().__init__(sample_rate, pooling=False, stats=stats)
+    def __init__(self, sample_rate: float):
+        super().__init__(sample_rate, pooling=False, stats=None)
         self.feature_names = [
             "pmf_centroid",
             "pmf_spread",
@@ -435,11 +449,16 @@ class Distortion(ExtractorBase):
 
 class StereoFeatures(ExtractorBase):
     """
-    Stereo Feature Extractor
+    Stereo Feature Extractor: Sides-to-mid ratio and left-right imbalance
+
+    Man, B. D., et al. "An analysis and evaluation of audio features for multitrack
+    music mixtures." (2014).
+
+    :param sample_rate (int): rate to run extraction at
     """
 
-    def __init__(self, sample_rate: float, stats: list = None):
-        super().__init__(sample_rate, pooling=False, stats=stats)
+    def __init__(self, sample_rate: float):
+        super().__init__(sample_rate, pooling=False, stats=None)
         self.feature_names = ["side_mid_ratio", "lr_imbalance"]
 
     def __call__(self, audio: np.ndarray):
@@ -465,13 +484,23 @@ class StereoFeatures(ExtractorBase):
 
 class PhaseCorrelation(ExtractorBase):
     """
-    Phase Correlation Features
+    Phase Correlation feature extraction. Calculates the correlation coefficient
+    between the left and right channel. If a frame_size of None is based in then the
+    calculation is performed on the entire audio signal. Otherwise, frame-by-frame
+    processing is computed using the frame_size number of samples and the results are
+    summarized using the passed in stats.
+
+    :param sample_rate (float): rate to run extraction at
+    :param frame_size (int): number of samples per frame for frame-by-frame processing.
+        If None then computation is performed over the entire input. Defaults to None.
+    :param stats (list): a list of strings indicating the stats to use during time
+        summarization. Only applied if frame-by-frame processing is computed.
     """
 
     def __init__(
             self,
             sample_rate: float,
-            frame_size: float = None,
+            frame_size: int = None,
             stats: list = None
     ):
         super().__init__(sample_rate, pooling=frame_size is not None, stats=stats)
@@ -480,7 +509,7 @@ class PhaseCorrelation(ExtractorBase):
 
     def __call__(self, audio: np.ndarray):
         """
-        Run phase correlation feature extraction
+        Run phase correlation feature extraction.
 
         :param audio: Input audio samples
         :return: feature matrix
@@ -512,7 +541,12 @@ class PhaseCorrelation(ExtractorBase):
 
 class StereoSpectrum(ExtractorBase):
     """
-    Stereo Spectrum Features
+    Stereo Spectrum Features. Panning features computed using spectrums from the left
+    and right audio channels. Returns features from the entire spectrum as well as
+    three subbands which include 0-250Hz, 250-2800Hz, and 2800+ Hz.
+
+    Tzanetakis, George, Randy Jones, and Kirk McNally. "Stereo Panning Features for
+    Classifying Recording Production Style." ISMIR. 2007.
     """
 
     def __init__(
@@ -588,6 +622,13 @@ class StereoSpectrum(ExtractorBase):
 
     @staticmethod
     def compute_stereo_spectrum(spectrum_left, spectrum_right):
+        """
+        Computes the stereo panning features using left and right channel spectrums
+
+        :param spectrum_left: magnitude spectrum from the left channel
+        :param spectrum_right: magnitude spectrum from the right channel
+        :return: stereo spectrum features
+        """
 
         np.zeros_like(spectrum_left)
 
@@ -634,7 +675,9 @@ class SpectralFlux(ExtractorBase):
         self.frame_size = frame_size
         self.num_bands = num_bands
         self.band_str = "spectral_flux_band_{}"
-        self.feature_names = [self.band_str.format(i + 1) for i in range(self.num_bands)]
+        self.feature_names = [
+            self.band_str.format(i + 1) for i in range(self.num_bands)
+        ]
 
     def __call__(self, audio: np.ndarray):
         """
