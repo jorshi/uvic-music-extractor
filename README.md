@@ -96,6 +96,20 @@ Dynamic Spread Feature Extractor. Measure of the loudness spread across the audi
 
 Set of distortion features -- computes a probability mass function on audio samples using a histogram with 1001 bins. Several statistics are computed on the resulting pmf including the centroid, spread, skewness, kurtosis, flatness, and the 'gauss' feature. 'Gauss' is a measurement of the gaussian fit of the the pmf [1, 13].
 
+### Stereo Features
+
+Side-to-mid ratio and left/right imbalance [2]
+
+**Phase Correlation**
+Calculates the correlation coefficient between the left and right channel. Computes phase correlation over the entire track as well as using short-time processing sing a frame size of 2048 with no overlap. Short-time results are summarized using mean and standard deviation. A value of +1 indicates the left and right channels are completely correlation (the same), a value of 0 indicates the left and right channels are not correlated, and a value of -1 indicates the left and right channels are completely out of phase. 
+
+**Stereo Spectrum**
+Stereo Spectrum Features. Panning features computed using spectrums from the left and right audio channels. Returns features from the entire spectrum as well as three subbands which include 0-250Hz, 250-2800Hz, and 2800+ Hz [14].
+
+### Other
+
+Zero-crossing rate [15]
+
 ## References
 
 [1] Wilson, A. D., and B. M. Fazenda. "Perception & evaluation of audio quality in music production." Proc. of the 16th Int. Conference on Digital Audio Effects (DAFx-13). 2013.
@@ -123,6 +137,10 @@ Set of distortion features -- computes a probability mass function on audio samp
 [12] Vickers, Earl. "Automatic long-term loudness and dynamics matching." Audio Engineering Society Convention 111. Audio Engineering Society, 2001.
 
 [13] Wilson, Alex, and Bruno Fazenda. "Characterisation of distortion profiles in relation to audio quality." Proc. of the 17th Int. Conference on Digital Audio Effects (DAFx-14). 2014.
+
+[14] Tzanetakis, George, Randy Jones, and Kirk McNally. "Stereo Panning Features for Classifying Recording Production Style." ISMIR. 2007.
+
+[15] https://essentia.upf.edu/reference/std_ZeroCrossingRate.html
 
 ## Development
 **Custom Scripts and Extractors**
