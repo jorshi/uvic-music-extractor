@@ -170,12 +170,11 @@ def octave_filter_bank(
 
         # Check to make sure that the high band is not above the Nyquist
         if high_freq >= sample_rate / 2:
+            required_rate = (low_band * 2 ** 8) * 2
             raise RuntimeError(
-                "Sample rate too low for {} band octave filterbank. Running with {} "
-                "bands instead".format(num_bands, i + 2)
+                f"Sample rate too low for {num_bands} band octave filterbank. "
+                f"Sample rate must be greater than {required_rate}."
             )
-            high_freq = low_freq
-            break
 
         # Create the filter for this band
         sos_band = ellip(2, 3, 60, [low_freq, high_freq], btype='bandpass',
